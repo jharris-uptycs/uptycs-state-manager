@@ -163,9 +163,16 @@ You may now choose to setup the Distributor Package and State Manager Associatio
 
 ### Terraform Option
 
-1. Move to the terraform folder
+The diagram below shows the resources created by this terraform project.
+The terraform project creates the State Manager Association and the Systems Manager Distributor 
+Package.
 
-    Examine the variables.tf file and modify as required.   You will be required to enter the 
+<img src="/Users/jharris/PycharmProjects/uptycs-state-manager/images/terraform_setup.png" width="600"/>
+    
+1. Move to the terraform folder
+   
+    Examine the variables.tf and the setup.tfvars files and modify as required.   You will be 
+   required to enter the 
        bucket name as a minimum.
     
     | Variable Name              | Default Value                                     | Type        | Description                                                                                              | 

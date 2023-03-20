@@ -38,6 +38,7 @@ PACKAGE_DESCRIPTION = \
     'state and activity of all of your assets. '
 
 class DistributorFilePackager:
+    # pylint: disable=R0902
     """
     Class to represent a AWS Distributor package.
     """
@@ -139,6 +140,7 @@ class DistributorFilePackager:
         return json_data
 
     def _generate_manifest(self) -> None:
+        # pylint: disable=R0914:
         """
         Generates the manifest.json file required to create the ssm document.
         """
@@ -352,6 +354,7 @@ class InvalidApiAuthParametersError(UptApiAuthError):
 
 
 class UptApiAuth:
+    # pylint: disable=R0903
     """Class for creating Uptycs API authorization objects from API key files or parameters."""
 
     def __init__(self, api_config_file=None, key=None, secret=None, domain=None, customer_id=None,
@@ -414,6 +417,7 @@ class UptApiAuth:
 
 
 class UptApiCall:
+    # pylint: disable=R0903
     """ Class to call any Uptycs API
         Future enhancement could add support for /url?param=value filters
         self.rc = 0 on success, 1 on error
@@ -431,7 +435,8 @@ class UptApiCall:
         self.logger = LogHandler(str(self.__class__))
         try:
             self.api_auth = UptApiAuth(AUTHFILE)
-        except Exception as error:
+        except Exception as error: # pylint: disable=W0718
+
             self.logger.error(error)
             sys.exit(1)
 
@@ -480,7 +485,7 @@ class UptApiCall:
 
         content_type = response.headers.get('Content-Type', '')
         stream_types = ['application/octet-stream', 'application/x-redhat-package-manager']
-        if any([x in content_type for x in stream_types]):
+        if any([x in content_type for x in stream_types]): # pylint: disable=R1729:
             self.response_stream = response
         else:
             self.response_json = response.json()
@@ -510,7 +515,7 @@ class ObjectGroupsApi:
         try:
             resp = UptApiCall('/objectGroups', 'GET', {})
             return resp.response_json
-        except Exception as error:
+        except Exception as error: # pylint: disable=W0718:
             self.logger.error(error)
             sys.exit(1)
 
@@ -561,8 +566,7 @@ class PackageDownloadsApi:
     def package_downloads_osquery_os_asset_group_id_get(self, os_name: str, dir_name: str,
                                                         query_params: Optional[
                                                             Dict[str, str]] = None) -> None:
-        # TODO: Optimise downloads. At present we often download the same file multiple times.
-
+        # pylint: disable=R0914
         """
         Downloads an osquery package for the given os and asset
         group ID and saves it to the specified directory.
@@ -618,6 +622,7 @@ class PackageDownloadsApi:
 
 
 class ManagePackageBucket:
+    # pylint: disable=R0903
     """
     Class to handle all interactions with the S3 Bucket used for the distributor package
     """
@@ -730,6 +735,7 @@ def main():
     Main function
 
     """
+    # pylint: disable=W0603
     global AUTHFILE
     parser = argparse.ArgumentParser(
         description='Create and upload Distributor packages to the AWS SSM'
