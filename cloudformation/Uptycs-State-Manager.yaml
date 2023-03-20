@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Uptycs State Manager Stack to setup a stackset to operate across regions
+Parameters:
+  AdministrationRoleARN:
+    Type: String
+    Default: 'arn:aws:iam::106808901653:role/AWS-QuickSetup-StackSet-Local-AdministrationRole'
+  UptycsSsmPackageBucketFolder:
+    Type: String
+    Description: Uptycs folder in s3 bucket
+    Default: uptycs
+  UptycsSsmPackageName:
+    Description: Uptycs Distributor package name
+    Type: String
+    Default: UptycsAgent
+  UptycsSsmPackageBucket:
+    Description: SSM Distributor package that installs the Falcon agent
+    Type: String
+    Default: uptycs-dist-qjrzwm
+  UptycsAgentTargetKey:
+    Description: Value of the Tag Key used to define the automation target
+    Default: "SENSOR_DEPLOY"
+    Type: String
+  UptycsAgentTargetValue:
+    Description: Value of the Tag Value used to define the automation target
+    Default: "TRUE"
+    Type: String
+  UptycsScheduleRate:
+    Description: SSM assocation application cycle (minimum 30 minutes)
+    Type: String
+    Default: 60 minutes
+  MaxConcurrency:
+    Description: Percentage of total targets that SSM State Manager should run the SSM Automation concurrently
+    Type: String
+    Default: 100%
+  MaxErrors:
+    Description: Error threshold percentage before
+    Type: String
+    Default: 25%
+  ComplianceSeverity:
+    Description: The Severity to apply to the State Manager Alert
+    Type: String
+    AllowedValues:
+      - 'CRITICAL'
+      - 'HIGH'
+      - 'LOW'
+      - 'MEDIUM'
+      - 'UNSPECIFIED'
+  EnabledRegions:
+    Type: CommaDelimitedList
+    Description: "Enter a comma-delimited list of regions from which you want to collect logs and metric streams. For example: \"us-east-1,eu-central-1,ap-south-1\"."
+
+
+Resources:
+  UptycsAgentStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      AdministrationRoleARN: !Ref AdministrationRoleARN
+      Description: StackSet for Uptycs Agent Installation
+      StackSetName: UptycsAgentStackSet
+      TemplateURL: https://s3.amazonaws.com/uptycs-dist-qjrzwm/uptycs/Uptycs-Agent-Stackset.yaml
+      Parameters:
+        - ParameterKey: UptycsSsmPackageBucketFolder
+          ParameterValue: !Ref UptycsSsmPackageBucketFolder
+        - ParameterKey: UptycsSsmPackageName
+          ParameterValue: !Ref UptycsSsmPackageName
+        - ParameterKey: UptycsSsmPackageBucket
+          ParameterValue: !Ref UptycsSsmPackageBucket
+        - ParameterKey: UptycsAgentTargetKey
+          ParameterValue: !Ref UptycsAgentTargetKey
+        - ParameterKey: UptycsAgentTargetValue
+          ParameterValue: !Ref UptycsAgentTargetValue
+        - ParameterKey: UptycsScheduleRate
+          ParameterValue: !Ref UptycsScheduleRate
+        - ParameterKey: MaxConcurrency
+          ParameterValue: !Ref MaxConcurrency
+        - ParameterKey: MaxErrors
+          ParameterValue: !Ref MaxErrors
+        - ParameterKey: ComplianceSeverity
+          ParameterValue: !Ref ComplianceSeverity
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
+      PermissionModel: SELF_MANAGED
+      StackInstancesGroup:
+          - DeploymentTargets:
+              Accounts:
+                - !Ref "AWS::AccountId"
+            Regions: !Ref EnabledRegions

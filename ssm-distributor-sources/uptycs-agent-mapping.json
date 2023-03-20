@@ -1,0 +1,79 @@
+{
+  "linux": [
+    {
+      "upt_package": "centos",
+      "id": "amzn2",
+      "dir": "UPT_PRO_AMAZON2_x86_64",
+      "name": "amazon",
+      "major_version": "2",
+      "minor_version": "",
+      "arch_type": "x86_64"
+    },
+    {
+      "upt_package": "centos",
+      "id": "amzn2",
+      "dir": "UPT_PRO_AMAZON2_ARM64",
+      "name": "amazon",
+      "major_version": "2",
+      "minor_version": "",
+      "arch_type": "arm64"
+    },
+    {
+      "upt_package": "centos",
+      "id": "redhat",
+      "dir": "UPT_PRO_REDHAT_x86_64",
+      "name": "redhat",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "x86_64"
+    },
+    {
+      "upt_package": "centos",
+      "id": "redhat",
+      "dir": "UPT_PRO_REDHAT_ARM64",
+      "name": "redhat",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "arm64"
+    },
+    {
+      "upt_package": "centos",
+      "id": "suse",
+      "dir": "UPT_PRO_SUSE_x86_64",
+      "name": "suse",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "x86_64"
+    },
+
+    {
+      "upt_package": "debian",
+      "id": "ubuntu",
+      "dir": "UPT_PRO_UBUNTU_x86_64",
+      "name": "ubuntu",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "x86_64"
+    },
+    {
+      "upt_package": "debian",
+      "id": "ubuntu",
+      "dir": "UPT_PRO_UBUNTU_ARM64",
+      "name": "ubuntu",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "arm64"
+    }
+  ],
+  "windows": [
+    {
+      "upt_package": "windows",
+      "dir": "UPT_PRO_WINDOWS",
+      "id": "windows",
+      "name": "windows",
+      "major_version": "_any",
+      "minor_version": "",
+      "arch_type": "x86_64"
+    }
+  ]
+}
