@@ -159,7 +159,7 @@ More information about the python script [here](additional-documents/CREATE-PACK
 ## Create the Distributor Package and State Manager Association
 
 You may now choose to setup the Distributor Package and State Manager Association 
-[terraform](###Terraform Option)  or [cloudformation](./additional-documents/CloudFormation.md)
+[terraform](###Terraform Option)  or [cloudformation](./additional-documents/CLOUDFORMATION.md)
 
 ### Terraform Option
 
