@@ -8,4 +8,4 @@ UptycsEc2TargetTagKeyValue = "TRUE"
 #The name of the bucket where the the zip files and manifest.json file are located
 s3_bucket_name = "uptycs-dist-qjrzwm"
 
-create_instance = "false"
+create_instance = "true"
