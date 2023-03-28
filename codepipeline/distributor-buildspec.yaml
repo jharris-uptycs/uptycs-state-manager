@@ -1,0 +1,35 @@
+version: 0.2
+phases:
+    install:
+        runtime-versions:
+          python: 3.8
+        commands:
+          # Create a virtual environment named 'myenv'
+          - python3 -m venv myenv
+          # Activate the virtual environment
+          - . myenv/bin/activate
+          # Upgrade pip to the latest version
+          - pip install --upgrade pip
+    build:
+        commands:
+            - echo "S3 Upload Beginning"
+            - python -V
+            - pip install -r requirements.txt
+            - export ACCID=$(aws sts get-caller-identity --query 'Account' | tr -d '"')
+            - cd ssm-distributor-sources
+            - python codepipeline_create_package.py
+            - aws s3 sync ../s3-bucket s3://$STAGING_BUCKET/$STAGING_FOLDER/ --delete --exclude "*" --include "manifest.json" --include "*.zip"
+            - echo "S3 Upload Complete..."
+#            - cd ..
+#            - aws s3 sync . s3://$STAGING_BUCKET/templates --exclude "*" --include "*.yaml"
+            - export TEMPLATE_URL="https://upt-test-eu-west-1.s3.eu-west-1.amazonaws.com/templates/Uptycs-State-Manager-aws-org-v3.yaml"
+            - echo $TEMPLATE_URL
+            - echo "Running command"
+            - echo "aws cloudformation create-stack --stack-name Uptycs-State-Manager --template-url $TEMPLATE_URL --parameters ParameterKey=EnabledRegions,ParameterValue=$EnabledRegions ParameterKey=EnableAllRegions,ParameterValue=$EnableAllRegions ParameterKey=ComplianceSeverity,ParameterValue=$ComplianceSeverity ParameterKey=AdministrationRoleArn,ParameterValue=$AdministrationRoleArn ParameterKey=ExecutionRoleName,ParameterValue=$ExecutionRoleName ParameterKey=UptycsAgentTargetKey,ParameterValue=$UptycsAgentTargetKey ParameterKey=UptycsAgentTargetValue,ParameterValue=$UptycsAgentTargetValue ParameterKey=UptycsSsmPackageBucket,ParameterValue=$STAGING_BUCKET --capabilities CAPABILITY_IAM"
+            - aws cloudformation create-stack --stack-name Uptycs-State-Manager --template-url $TEMPLATE_URL --parameters ParameterKey=EnabledRegions,ParameterValue=$EnabledRegions ParameterKey=EnableAllRegions,ParameterValue=$EnableAllRegions ParameterKey=ComplianceSeverity,ParameterValue=$ComplianceSeverity ParameterKey=AdministrationRoleArn,ParameterValue=$AdministrationRoleArn ParameterKey=ExecutionRoleName,ParameterValue=$ExecutionRoleName ParameterKey=UptycsAgentTargetKey,ParameterValue=$UptycsAgentTargetKey ParameterKey=UptycsAgentTargetValue,ParameterValue=$UptycsAgentTargetValue ParameterKey=UptycsSsmPackageBucket,ParameterValue=$STAGING_BUCKET --capabilities CAPABILITY_IAM
+
+    post_build:
+        commands:
+            - echo "Deploy complete"    # - paths
+
+

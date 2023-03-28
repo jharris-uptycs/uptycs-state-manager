@@ -1,0 +1,626 @@
+
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Uses AWS CodePipeline/CodeDeploy to update AWS Service Catalog Portfolio
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E9007  # managed policy does not support partition
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Uptycs API Permissions"
+        Parameters:
+          - UptycsKeysParameterStoreName
+          - UptycsAPIKey
+          - UptycsSecret
+          - UptycsCustomerId
+          - UptycsDomain
+      - Label:
+          default: "Existing StackSet Administration and Execution roles"
+        Parameters:
+          - AdministrationRoleArn
+          - ExecutionRoleName
+      - Label:
+          default: "Uptycs Distributor Package Parameters"
+        Parameters:
+          - UptycsSsmPackageBucket
+      - Label:
+          default: "StackSet settings"
+        Parameters:
+          - UptycsTemplateName
+          - EnableAllRegions
+          - EnabledRegions
+      - Label:
+          default: "Uptycs SSM State Manager Association Parameters"
+        Parameters:
+          - UptycsAgentTargetKey
+          - UptycsAgentTargetValue
+          - ComplianceSeverity
+      - Label:
+          default: "Codepipeline Parameters"
+        Parameters:
+          - RepositoryName
+          - RepositoryDescription
+          - BranchName
+          - UptycsSsmPackageBucket
+          - S3CodeBucketName
+          - S3CodeBucketKey
+          - S3Prefix
+    ParameterLabels:
+      EnableAllRegions:
+        default: Set to true to enable or regions or false and specify a region list
+      UptycsStateManagerStackSet:
+        default: The Name of the Stackset
+      AdministrationRoleArn:
+        default: "The ARN of your existing stackset Administration Role eg 
+        arn:aws:iam::<account>:role/service-role/<rolename>"
+      UptycsSsmPackageBucketFolder:
+        default: "The folder where the zip and manifest files are located"
+      UptycsSsmPackageBucket:
+        default: "The s3 bucket where the manifest and zip files are located"
+      UptycsAgentTargetKey:
+        default: "The Tag Key Name used to Target instances"
+      UptycsAgentTargetValue:
+        default: "The Tag Key Value used to Target instances"
+      ComplianceSeverity:
+        default: "The severity level that is assigned to the association."
+## Parameters
+Parameters:
+  # Regions
+  UptycsTemplateName:
+    Type: String
+    Default: Uptycs-State-Manager-aws-org-v3.yaml
+    Description: The name of the Uptycs master account template
+  EnableAllRegions:
+    Description: Allowed Values true false
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  EnabledRegions:
+    Type: String
+    Description: "Enter a comma-delimited list of regions where your distributor package will be 
+    shared. For example: \"us-east-1,eu-central-1,ap-south-1\"."
+  # State Manager Association Severity
+  ComplianceSeverity:
+    Description: The Severity to apply to the State Manager Alert
+    Type: String
+    AllowedValues:
+      - 'CRITICAL'
+      - 'HIGH'
+      - 'LOW'
+      - 'MEDIUM'
+      - 'UNSPECIFIED'
+## EC2 Instance Tags
+  UptycsAgentTargetKey:
+    Description: Value of the Tag Key used to define the automation target
+    Default: "SENSOR_DEPLOY"
+    Type: String
+  UptycsAgentTargetValue:
+    Description: Value of the Tag Value used to define the automation target
+    Default: "TRUE"
+    Type: String
+## Stackset Roles
+  AdministrationRoleArn:
+    Type: String
+    Description: Existing Stackset Administration Role Name
+    Default: arn:aws:iam::106808901653:role/service-role/AWSControlTowerStackSetRole
+  ExecutionRoleName:
+    Type: String
+    Description: Existing Stackset Execution Role Name
+    Default: AWSControlTowerExecution
+## Uptycs API permissions stored in parameter store
+  UptycsKeysParameterStoreName:
+    Description: Uptycs API Key Parameter Store Name
+    Type: String
+    Default: '/uptycs/api/creds'
+  UptycsAPIKey:
+    Description: Uptycs API Key
+    Type: String
+    NoEcho: True
+    Default: "XR32VQGPTBIG3MFZXAI6UEHVJPHJYFZ5"
+  UptycsSecret:
+    Description: Uptycs API Secret
+    Type: String
+    NoEcho: True
+    Default: "5VSIE1/f1yQeIB5HMuC1CgZVDgdhPrYGIhMUu+TC5KqxeMflFdQ43vLHRzq5fxC7"
+  UptycsCustomerId:
+    Description: Uptycs API CustomerId
+    Type: String
+    NoEcho: True
+    Default: "3673a4d8-99d2-4d69-a784-858cdfd7fdb7"
+  UptycsDomain:
+    Description: Uptycs Domain
+    Type: String
+    NoEcho: True
+    Default: "cloudint"
+## Uptycs Codepipeline Parameters
+  RepositoryName:
+    Description: CodeCommit Repository for Uptycs CloudFormation templates
+    Type: String
+    Default: UptycsRepository
+  RepositoryDescription:
+    Description: CodeCommit repository description
+    Type: String
+    Default: Uptycs Repository
+  BranchName:
+    Description: Branch in the CodeCommit Repsitory for Uptycs CloudFormation templates
+    Type: String
+    Default: master
+  UptycsSsmPackageBucket:
+    Description: Prefix for the S3 Staging Bucket that stages the code copied from code commit
+    Type: String
+    Default: 'uptycs-package-sources'
+  # Codepipeline Sources
+  S3CodeBucketName:
+    Description: Name of the S3 bucket with the initial commit of code
+    Type: String
+    Default: upt-test-eu-west-1
+  S3Prefix:
+    Description: prefix for file path
+    Type: String
+    Default: 'sources'
+  S3CodeBucketKey:
+    Description: Key of the S3 bucket with the initial commit of code
+    Type: String
+    Default: 'ssm-distributor-sources.zip'
+## Resources
+Resources:
+
+# -------------------------------------------------------------------------------------------------------------------------------------------------------
+# This section uses AWS CodePipeline to create files for Uptycs Distributor packages
+# 
+# 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------- 
+  UptycsPackageFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+      BucketName:
+        !Sub
+        - '${UptycsSsmPackageBucket}-${RandomGUID}'
+        - { RandomGUID: !Select [ 1, !Split [ "-", !Select [ 2, !Split [ "/", !Ref AWS::StackId ]] ] ] }
+  UptycsPackageFilesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UptycsPackageFilesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: [ "s3:*" ]
+            Resource:
+              - !Sub "arn:aws:s3:::${UptycsPackageFilesBucket}/*"
+              - !Sub "arn:aws:s3:::${UptycsPackageFilesBucket}"
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      Code:
+        BranchName: !Ref BranchName
+        S3:
+          Bucket: !Ref S3CodeBucketName
+          Key: !Join [ '/', [ !Ref S3Prefix, !Ref S3CodeBucketKey ] ]
+      RepositoryDescription: !Ref RepositoryDescription
+      RepositoryName: !Ref RepositoryName
+      
+      
+  CodePipelineArtifactStoreBucket:
+    Type: 'AWS::S3::Bucket'
+  CodePipelineArtifactStoreBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref CodePipelineArtifactStoreBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:PutObject'
+            Resource: !Join 
+              - ''
+              - - !GetAtt 
+                  - CodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              StringNotEquals:
+                's3:x-amz-server-side-encryption': 'aws:kms'
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: !Join 
+              - ''
+              - - !GetAtt 
+                  - CodePipelineArtifactStoreBucket
+                  - Arn
+                - /*
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+  
+  AmazonCloudWatchEventRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: cwe-pipeline-execution
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'codepipeline:StartPipelineExecution'
+                Resource: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:Uptycs-pipeline"
+
+# Git commit triggers CodePipeline execution
+  AmazonCloudWatchEventRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - CodeCommit Repository State Change
+        resources:
+          - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}"
+        detail:
+          event:
+            - referenceCreated
+            - referenceUpdated
+          referenceType:
+            - branch
+          referenceName:
+            - !Ref BranchName
+      Targets:
+        - Arn: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:Uptycs-pipeline"
+          RoleArn: !GetAtt 
+            - AmazonCloudWatchEventRole
+            - Arn
+          Id: Uptycs-pipeline
+
+#Pipeline
+  UptycsPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name: Uptycs-pipeline
+      RoleArn: !GetAtt 
+        - CodePipelineServiceRole
+        - Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: UptycsSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                BranchName: !Ref BranchName
+                RepositoryName: !Ref RepositoryName
+                PollForSourceChanges: false
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: UptycsBuild
+              InputArtifacts:
+                - Name: SourceOutput
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactStoreBucket
+
+  CodePipelineServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+                - codepipeline.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Policies:
+      - PolicyName: Codepipeline-base-policy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: 
+                - 'codebuild:*'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+                - 's3:GetObjectVersion'
+                - 's3:GetBucketVersioning'
+                - 's3:GetBucketAcl'
+                - 's3:GetBucketLocation'
+                - 's3:ListBucket'
+                - 's3:CreateBucket'
+                - 's3:DeleteBucket'
+                - 's3:DeleteBucketPolicy'
+                - 's3:GetBucketPolicy'
+                - 's3:GetBucketPolicyStatus'
+                - 's3:PutBucketPolicy'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'cloudformation:DescribeStackResource'
+                - 'cloudformation:DescribeStackResources'
+                - 'cloudformation:GetTemplate'
+                - 'cloudformation:ListStackSets'
+                - 'cloudformation:DescribeStackEvents'
+                - 'cloudformation:DescribeStacks'
+                - 'cloudformation:DescribeStackSet'
+                - 'cloudformation:CreateStack'
+                - 'cloudformation:DeleteStack'
+                - 'cloudformation:UpdateStack'
+                - 'cloudformation:CreateStackSet'
+                - 'cloudformation:UpdateStackSet'
+                - 'cloudformation:CreateStackInstances'
+                - 'cloudformation:UpdateStackInstances'
+                - 'cloudformation:DescribeStackEvents'
+                - 'cloudformation:ListStacks'
+                - 'cloudformation:ValidateTemplate'
+                - 'cloudformation:SetStackPolicy'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 's3:*'
+                - 'iam:PassRole'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'codecommit:CancelUploadArchive'
+                - 'codecommit:GetBranch'
+                - 'codecommit:GetCommit'
+                - 'codecommit:GetUploadArchiveStatus'
+                - 'codecommit:UploadArchive'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'codedeploy:CreateDeployment'
+                - 'codedeploy:GetApplicationRevision'
+                - 'codedeploy:GetDeployment'
+                - 'codedeploy:GetDeploymentConfig'
+                - 'codedeploy:RegisterApplicationRevision'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'codebuild:BatchGetBuilds'
+                - 'codebuild:StartBuild'
+                - 'codebuild:StopBuild'
+                - 'codebuild:BatchGetProjects'
+                - 'codebuild:BatchGetBuilds'
+                - 'codebuild:ListBuildsForProject'
+                - 'codebuild:ListBuilds'
+                - 'codebuild:ListProjects'
+                - 'codebuild:ListCuratedEnvironmentImages'
+                - 'codebuild:ListSourceCredentials'
+                - 'codecommit:GetBranch'
+                - 'codecommit:GetCommit'
+                - 'codecommit:UploadArchive'
+                - 'codecommit:GetUploadArchiveStatus'
+                - 'codecommit:CancelUploadArchive'
+              Resource: '*'
+
+        
+  UptycsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /codepipeline/Uptycs-servicecatalog-${AWS::StackName}
+
+  CodeBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+        # StackSet params
+        - Name: EnableAllRegions
+          Type: PLAINTEXT
+          Value: !Ref EnableAllRegions
+        - Name: EnabledRegions
+          Type: PLAINTEXT
+          Value: !Ref EnabledRegions
+        - Name: ComplianceSeverity
+          Type: PLAINTEXT
+          Value: !Ref ComplianceSeverity
+        - Name: AdministrationRoleArn
+          Type: PLAINTEXT
+          Value: !Ref AdministrationRoleArn
+        - Name: ExecutionRoleName
+          Type: PLAINTEXT
+          Value: !Ref ExecutionRoleName
+        - Name: UptycsAgentTargetKey
+          Type: PLAINTEXT
+          Value: !Ref UptycsAgentTargetKey
+        - Name: UptycsAgentTargetValue
+          Type: PLAINTEXT
+          Value: !Ref UptycsAgentTargetValue
+        # Pipeline params
+        - Name: PARAMETER_PATH
+          Type: PLAINTEXT
+          Value: !Ref UptycsKeysParameterStoreName
+        - Name: AWS_ACCOUNT_ID
+          Type: PLAINTEXT
+          Value: !Ref 'AWS::AccountId'
+        - Name: STAGING_BUCKET
+          Type: PLAINTEXT
+          Value: !Ref UptycsPackageFilesBucket
+        - Name: STAGING_FOLDER
+          Type: PLAINTEXT
+          Value: uptycs
+        - Name: REGION
+          Type: PLAINTEXT
+          Value: !Ref AWS::Region
+        - Name: TEMPLATE_NAME
+          Type: PLAINTEXT
+          Value: !Ref UptycsTemplateName
+        Image: 'aws/codebuild/standard:5.0'
+        PrivilegedMode: true # required to build Docker images
+        Type: LINUX_CONTAINER  
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref UptycsLogGroup
+          Status: ENABLED
+      ServiceRole: !GetAtt CodePipelineServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: distributor-buildspec.yaml
+      TimeoutInMinutes: 10
+
+
+  WriteSecretToParameterStoreCustomResource:
+    Type: Custom::WriteSecretToParameterStore
+    Properties:
+      ServiceToken: !GetAtt WriteSecretToParameterStoreLambda.Arn
+      parameter_name: !Ref UptycsKeysParameterStoreName
+      SecretData:
+        key: !Ref UptycsAPIKey
+        secret: !Ref UptycsSecret
+        customerId: !Ref UptycsCustomerId
+        domain: !Ref UptycsDomain
+
+
+  WriteSecretToParameterStoreLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      MemorySize: 512
+      Runtime: python3.8
+      Role: !GetAtt WriteParameterExecutionRole.Arn
+      Timeout: 20
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          from botocore.exceptions import ClientError
+          import logging
+          import json
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          response_data = {}
+          def lambda_handler(event, context):
+            ssm = boto3.client('ssm')
+            parameter_name = event['ResourceProperties']['parameter_name']
+            status = cfnresponse.SUCCESS
+            if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+              try:
+                logger.info('EVENT Received: {}'.format(event))
+                secret_data = event['ResourceProperties']['SecretData']
+                response = ssm.put_parameter(
+                    Name=parameter_name,
+                    Value=json.dumps(secret_data),
+                    Type='SecureString',
+                    Overwrite=True
+                )
+                logger.info('Created parameter version {}'.format(response.get('Version')))
+                response_data = {
+                    'Status': 'SUCCESS',
+                    'Reason': 'Created Parameter',
+                    'Data': {'Version': response.get('Version')}
+                
+                }
+              except ClientError as client_error:
+                logger.info('Client Exception {}'.format(client_error))
+                response_data = {
+                    'Status': 'FAILED',
+                    'Data': {'Got client error {}'.format(client_error)}
+                }
+                status = cfnresponse.FAILED
+              except Exception as error:
+                response_data = {
+                    'Status': 'FAILED',
+                    'Data': {'ParameterName': parameter_name}
+                }
+                logger.info('Error Received: {}'.format(error))
+                status = cfnresponse.FAILED
+              finally:
+                cfnresponse.send(event, context, status, response_data)
+                  
+            elif event['RequestType'] == 'Delete':
+              try:
+                response = ssm.delete_parameter(
+                    Name=parameter_name)
+                logger.info('Deleted Parameter')
+                response_data = {
+                          'Status': 'SUCCESS'}
+              except ClientError as client_error:
+                logger.info('Client Exception {}'.format(error))
+                response_data = {
+                    'Status': 'FAILED',
+                    'Data': {'Got client error {}'.format(client_error)}
+                }
+              except Exception as error:
+                response_data = {
+                    'Status': 'FAILED',
+                    'Data': {'Got general error'}
+                }
+                logger.info('Failed to delete parameter')
+              finally:
+                cfnresponse.send(event, context, status, response_data)
+       
+
+  WriteParameterExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: "SSMParameterStoreWriteAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ssm:PutParameter"
+                  - "ssm:DeleteParameter"
+                  - "ssm:GetParameterHistory"
+                  - "ssm:GetParameter"
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${UptycsKeysParameterStoreName}"

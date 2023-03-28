@@ -1,3 +1,8 @@
+#
+# Version 2
+# Updates
+# Lifecycle event role has less permissive policies
+#
 AWSTemplateFormatVersion: 2010-09-09
 Description: Uptycs State Manager Stack to setup a State Manager 
   Association and Distributor Package in member accounts of an AWS org
@@ -10,8 +15,7 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "Existing StackSet Administration and Execution roles (If you have created 
-          them already)"
+          default: "Existing StackSet Administration and Execution roles"
         Parameters:
           - AdministrationRoleArn
           - ExecutionRoleName
@@ -63,14 +67,32 @@ Metadata:
       ComplianceSeverity:
         default: "The severity level that is assigned to the association."
 Parameters:
+  # Non Default Params
+  ## Stackset Roles
+  EnabledRegions:
+    Type: CommaDelimitedList
+    Description: "Enter a comma-delimited list of regions from which you want to collect logs and metric streams. For example: \"us-east-1,eu-central-1,ap-south-1\"."
+  EnableAllRegions:
+    Description: Create and Share Package in all regions
+    Type: String
+  ComplianceSeverity:
+    Description: The Severity to apply to the State Manager Alert
+    Type: String
   AdministrationRoleArn:
     Type: String
     Description: Existing Stackset Administration Role Name
-    Default: arn:aws:iam::106808901653:role/service-role/AWSControlTowerStackSetRole
   ExecutionRoleName:
     Type: String
     Description: Existing Stackset Execution Role Name
-    Default: AWSControlTowerExecution
+  UptycsAgentTargetKey:
+    Description: Value of the Tag Key used to define the automation target
+    Type: String
+  UptycsAgentTargetValue:
+    Description: Value of the Tag Value used to define the automation target
+    Type: String
+
+  # Default Params
+  # S3 Bucket for package zip and manifest files
   UptycsSsmPackageBucketFolder:
     Type: String
     Description: Uptycs folder in s3 bucket
@@ -81,14 +103,6 @@ Parameters:
     Default: UptycsAgent
   UptycsSsmPackageBucket:
     Description: SSM Distributor package that installs the Uptycs agent
-    Type: String
-  UptycsAgentTargetKey:
-    Description: Value of the Tag Key used to define the automation target
-    Default: "SENSOR_DEPLOY"
-    Type: String
-  UptycsAgentTargetValue:
-    Description: Value of the Tag Value used to define the automation target
-    Default: "TRUE"
     Type: String
   UptycsScheduleRate:
     Description: SSM association application cycle (minimum 30 minutes)
@@ -102,28 +116,9 @@ Parameters:
     Description: Error threshold percentage before
     Type: String
     Default: 25%
-  ComplianceSeverity:
-    Description: The Severity to apply to the State Manager Alert
-    Type: String
-    AllowedValues:
-      - 'CRITICAL'
-      - 'HIGH'
-      - 'LOW'
-      - 'MEDIUM'
-      - 'UNSPECIFIED'
   UptycsStateManagerStackSet:
     Type: String
     Default: 'UptycsStateManagerStackSet'
-  EnabledRegions:
-    Type: CommaDelimitedList
-    Description: "Enter a comma-delimited list of regions from which you want to collect logs and metric streams. For example: \"us-east-1,eu-central-1,ap-south-1\"."
-  EnableAllRegions:
-    Description: Create and Share Package in all regions
-    Type: String
-    AllowedValues:
-      - true
-      - false
-
 
 Resources:
   UptycsMasterAcctAgentStackSet:
