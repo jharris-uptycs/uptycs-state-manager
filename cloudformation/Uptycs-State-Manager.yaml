@@ -74,7 +74,7 @@ Parameters:
     Type: String
     Default: UptycsAgent
   UptycsSsmPackageBucket:
-    Description: SSM Distributor package that installs the Falcon agent
+    Description: SSM Distributor package that installs the Uptycs agent
     Type: String
   UptycsAgentTargetKey:
     Description: Value of the Tag Key used to define the automation target
@@ -294,7 +294,7 @@ Resources:
                   InstallerParams:
                     type: String
                     default: ''
-                    description: (Optional) Enter CrowdStrike's install time params here. For more info refer Falcon console documentation.
+                    description: (Optional).
                   Action:
                     type: String
                     allowedValues:
