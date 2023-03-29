@@ -85,7 +85,7 @@ Parameters:
     Default: "TRUE"
     Type: String
   UptycsScheduleRate:
-    Description: SSM assocation application cycle (minimum 30 minutes)
+    Description: SSM association application cycle (minimum 30 minutes)
     Type: String
     Default: 60 minutes
   MaxConcurrency:
@@ -232,7 +232,7 @@ Resources:
             Default: "TRUE"
             Type: String
           UptycsScheduleRate:
-            Description: SSM assocation application cycle (minimum 30 minutes)
+            Description: SSM association application cycle (minimum 30 minutes)
             Type: String
             Default: 60 minutes
           MaxConcurrency:
