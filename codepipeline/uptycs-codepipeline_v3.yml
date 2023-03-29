@@ -1,7 +1,7 @@
 
 
 AWSTemplateFormatVersion: 2010-09-09
-Description: Uses AWS CodePipeline/CodeDeploy to update AWS Service Catalog Portfolio
+Description: Uses AWS CodePipeline/CodeDeploy to create Uptycs SSM Distributor Package
 Metadata:
   cfn-lint:
     config:
@@ -30,7 +30,6 @@ Metadata:
       - Label:
           default: "StackSet settings"
         Parameters:
-          - UptycsTemplateName
           - EnableAllRegions
           - EnabledRegions
       - Label:
