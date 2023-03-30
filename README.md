@@ -118,15 +118,15 @@ The `create_package.py` script will use information in the `agent_list.json` fil
 files and a manifest.json file place them in a local s3-bucket folder and then upload them to an S3 bucket in your account. 
 More information about the python script [here](additional-documents/CREATE-PACKAGE.md)
 
-1. Navigate to the `ssm-distributor` folder and execute the `stage-package.py` script.
+1. Navigate to the `ssm-distributor` folder and execute the `create_package.py` script.
 
     > Note: It is possible to create a custom distributor package, more information is provided [here](.
     > /additional-documents/CUSTOM-PACKAGES.md).
    
-2. Run the stage-package.py script 
+2. Run the create_package.py script 
     ```shell
         cd ssm-distributor-sources
-        python3 ./stage-package.py -c <my-credentials-file> -b <my-bucket> -r <aws-region>   
+        python3 ./create_package.py -c <my-credentials-file> -b <my-bucket> -r <aws-region>   
     ```
    
     >Note: 
