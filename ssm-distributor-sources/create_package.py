@@ -693,11 +693,11 @@ class ManagePackageBucket:
             if self.region == 'us-east-1':
                 self.s3_client.create_bucket(Bucket=bucket_name)
             else:
+                location = {
+                    'LocationConstraint': self.region} if self.region != 'us-east-1' else None
                 self.s3_client.create_bucket(
                     Bucket=bucket_name,
-                    CreateBucketConfiguration={
-                        'LocationConstraint': self.region
-                    }
+                    CreateBucketConfiguration=location
                 )
             return True
         except ClientError as err:
