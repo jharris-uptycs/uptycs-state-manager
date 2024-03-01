@@ -5,7 +5,7 @@
       "id": "amzn2",
       "dir": "UPT_PRO_AMAZON2_x86_64",
       "name": "amazon",
-      "major_version": "2",
+      "major_version": "_any",
       "minor_version": "",
       "arch_type": "x86_64"
     },
@@ -14,7 +14,7 @@
       "id": "amzn2",
       "dir": "UPT_PRO_AMAZON2_ARM64",
       "name": "amazon",
-      "major_version": "2",
+      "major_version": "_any",
       "minor_version": "",
       "arch_type": "arm64"
     },

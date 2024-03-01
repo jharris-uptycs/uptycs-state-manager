@@ -20,7 +20,7 @@ The script requires three inputs:
 2. `regions_file` - A JSON file containing the regions where the package should be shared.
 3. `api_key_file` - A file containing the API keys for Uptycs.
 
-## Dependencies
+### Dependencies
 
 The script requires the following packages:
 - `argparse`
@@ -35,7 +35,7 @@ The script requires the following packages:
 If necessary, these can be installed using pip by running 
 ```pip install -r requirements.txt```
 
-## Usage
+### Usage
 
 First, clone and navigate into the directory:
 

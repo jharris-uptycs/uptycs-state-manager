@@ -24,6 +24,9 @@ This solution leverages AWS Systems Manager [AWS Automations](https://docs.aws.a
 [AWS Distributor](https://docs.aws.amazon.com/systems-manager/latest/userguide/distributor.html), and [AWS State Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html) to 
 automatically install the Uptycs Agent on EC2 Instances.
 
+Uptycs Now supports managed distributor packages in us-east-1 and us-east-2.   If you wish to 
+use Uptycs managed packages follow the guide here [Using Uptycs Distributor Packages](./supported-distributor-packages/README.md)
+
 
 
 ## State Manager and EC2 Instances
