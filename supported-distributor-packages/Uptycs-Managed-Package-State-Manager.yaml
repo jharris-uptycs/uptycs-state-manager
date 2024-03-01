@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Uptycs State Manager Stack to setup a stackset to operate across regions
+Description: Uptycs State Manager Stack using Uptycs Managed Distributor Packages. Check the name
+  of your distributor package in the "Shared With me Folder
 Metadata:
   cfn-lint:
     config:
       ignore_checks:
-        - E9007  # managed policy does not support partition
-        - E9008  # managed policy does not support partition
+        - E9008
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -17,9 +17,7 @@ Metadata:
       - Label:
           default: "Uptycs Distributor Package Parameters"
         Parameters:
-          - UptycsSsmPackageBucketFolder
           - UptycsSsmPackageName
-          - UptycsSsmPackageBucket
       - Label:
           default: "StackSet deployment settings"
         Parameters:
@@ -40,12 +38,8 @@ Metadata:
       ExecutionRoleName:
         default: "The name of the stackset Execution Role normally 
         AWSCloudFormationStackSetExecutionRole"
-      UptycsSsmPackageBucketFolder:
-        default: "The folder where the zip and manifest files are located"
       UptycsSsmPackageName:
-        default: "The name of the Uptycs distributor package that we will create"
-      UptycsSsmPackageBucket:
-        default: "The s3 bucket where the manifest and zip files are located"
+        default: "The name of your distributor package in the 'Shared With Me' folder"
       UptycsAgentTargetKey:
         default: "The Tag Key Name used to Target instances"
       UptycsScheduleRate:
@@ -58,6 +52,8 @@ Metadata:
         default: "The number of errors that are allowed before the run stops"
       ComplianceSeverity:
         default: "The severity level that is assigned to the association."
+      EnabledRegions:
+        default: "Sets the regions where the Stack instances  will be created"
 Parameters:
   AdministrationRoleName:
     Type: String
@@ -65,16 +61,8 @@ Parameters:
   ExecutionRoleName:
     Type: String
     Description: Existing Stackset Execution Role Name
-  UptycsSsmPackageBucketFolder:
-    Type: String
-    Description: Uptycs folder in s3 bucket
-    Default: uptycs
   UptycsSsmPackageName:
-    Description: Uptycs Distributor package name
-    Type: String
-    Default: UptycsAgent
-  UptycsSsmPackageBucket:
-    Description: SSM Distributor package that installs the Falcon agent
+    Description: Uptycs Distributor package name usually UptycsAgent-xxxxxx-with(out)-protect
     Type: String
   UptycsAgentTargetKey:
     Description: Value of the Tag Key used to define the automation target
@@ -85,7 +73,7 @@ Parameters:
     Default: "TRUE"
     Type: String
   UptycsScheduleRate:
-    Description: SSM assocation application cycle (minimum 30 minutes)
+    Description: SSM association application cycle (minimum 30 minutes)
     Type: String
     Default: 60 minutes
   MaxConcurrency:
@@ -107,7 +95,7 @@ Parameters:
       - 'UNSPECIFIED'
   EnabledRegions:
     Type: CommaDelimitedList
-    Description: "Enter a comma-delimited list of regions from which you want to collect logs and metric streams. For example: \"us-east-1,eu-central-1,ap-south-1\"."
+    Description: "Enter a comma-delimited list of regions For example: \"us-east-1,eu-central-1,ap-south-1\"."
 
 Conditions:
   CreateNewStackSetAdminRole: !Equals [!Ref AdministrationRoleName, ""]
@@ -159,6 +147,8 @@ Resources:
   UptycsAgentStackSet:
     Type: AWS::CloudFormation::StackSet
     Properties:
+      ManagedExecution:
+        Active: true
       AdministrationRoleARN: !If
         - CreateNewStackSetAdminRole
         - !GetAtt UptycsStackSetAdministrationRole.Arn
@@ -173,16 +163,13 @@ Resources:
           cfn-lint:
             config:
               ignore_checks:
-                - E9007  # managed policy does not support partition
-                - E9008  # managed policy does not support partition
+                - E9008  # No QSID for this project
           AWS::CloudFormation::Interface:
             ParameterGroups:
               - Label:
                   default: "Uptycs Configuration Parameters"
                 Parameters:
-                  - UptycsSsmPackageBucketFolder
                   - UptycsSsmPackageName
-                  - UptycsSsmPackageBucket
               - Label:
                   default: "Uptycs SSM Association Paramters"
                 Parameters:
@@ -193,12 +180,8 @@ Resources:
                   - MaxErrors
                   - ComplianceSeverity
             ParameterLabels:
-              UptycsSsmPackageBucketFolder:
-                default: "The folder where the zip and manifest files are located"
               UptycsSsmPackageName:
                 default: "The name of the Uptycs distributor package that we will create"
-              UptycsSsmPackageBucket:
-                default: "The s3 bucket where the manifest and zip files are located"
               UptycsAgentTargetKey:
                 default: "The Tag Key Name used to Target instances"
               UptycsScheduleRate:
@@ -212,16 +195,8 @@ Resources:
               ComplianceSeverity:
                 default: "The severity level that is assigned to the association."
         Parameters:
-          UptycsSsmPackageBucketFolder:
-            Type: String
-            Description: Uptycs folder in s3 bucket
-            Default: uptycs
           UptycsSsmPackageName:
             Description: Uptycs Distributor package name
-            Type: String
-            Default: UptycsAgent
-          UptycsSsmPackageBucket:
-            Description: The S3 bucket where the zip files and manifest.json file is hosted 
             Type: String
           UptycsAgentTargetKey:
             Description: Value of the Tag Key used to define the automation target
@@ -232,7 +207,7 @@ Resources:
             Default: "TRUE"
             Type: String
           UptycsScheduleRate:
-            Description: SSM assocation application cycle (minimum 30 minutes)
+            Description: SSM association application cycle (minimum 30 minutes)
             Type: String
             Default: 60 minutes
           MaxConcurrency:
@@ -262,7 +237,6 @@ Resources:
                 - Key: !Sub tag:${UptycsAgentTargetKey}
                   Values:
                     - !Ref UptycsAgentTargetValue
-
               ScheduleExpression: !Sub rate(${UptycsScheduleRate})
               Parameters:
                 action:
@@ -272,7 +246,7 @@ Resources:
                 installationType:
                   - 'Uninstall and reinstall'
                 name:
-                  - 'UptycsAgent'
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:870486279846:document/${UptycsSsmPackageName}
               AssociationName: 'Uptycs'
               ComplianceSeverity: !Ref ComplianceSeverity
               ApplyOnlyAtCronInterval: false
@@ -294,7 +268,7 @@ Resources:
                   InstallerParams:
                     type: String
                     default: ''
-                    description: (Optional) Enter CrowdStrike's install time params here. For more info refer Falcon console documentation.
+                    description: (Optional).
                   Action:
                     type: String
                     allowedValues:
@@ -350,151 +324,10 @@ Resources:
               ManagedPolicyArns:
                 - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
 
-          #Custom Lambda backed Resource for creating the SSM Distributor Package
-          CreateSSMDistributorPackage:
-            Type: 'Custom::CreateSSMDistributorPackage'
-            DependsOn:
-              - CreateSSMDistributorPackageExecutePermission
-            Properties:
-              ServiceToken: !GetAtt 'CreateSSMDistributorLambda.Arn'
-              package_name: !Ref UptycsSsmPackageName
-              s3_bucket: !Ref UptycsSsmPackageBucket
-              s3_prefix: !Ref UptycsSsmPackageBucketFolder
-          #Permission for CFN to invoke custom lambda backed resource
-          CreateSSMDistributorPackageExecutePermission:
-            Type: 'AWS::Lambda::Permission'
-            Properties:
-              Action: 'lambda:InvokeFunction'
-              FunctionName: !GetAtt 'CreateSSMDistributorLambda.Arn'
-              Principal: 'cloudformation.amazonaws.com'
-          #Lambda Function that creates the SSM Distributor Package
-          CreateSSMDistributorLambda:
-            Type: 'AWS::Lambda::Function'
-            Properties:
-              Handler: index.handler
-              Runtime: python3.7
-              MemorySize: 512
-              Role: !GetAtt 'CreateSSMDistributorLambdaRole.Arn'
-              Timeout: 300
-              Code:
-                ZipFile: |
-                  import json
-                  import boto3
-                  import botocore
-                  import os
-                  import cfnresponse
-                  import logging
-                  from botocore.vendored import requests
 
-                  logger = logging.getLogger()
-                  logger.setLevel(logging.INFO)
-
-                  def handler(event, context):
-                      s3 = boto3.client('s3')
-                      ssm = boto3.client('ssm')
-                      package_name = event['ResourceProperties']['package_name']
-                      s3_bucket = event['ResourceProperties']['s3_bucket']
-                      s3_prefix = event['ResourceProperties']['s3_prefix']
-                      logger.info('EVENT Received: {}'.format(event))
-                      response_data = {}
-                      eventType = event['RequestType']
-
-                      if eventType == 'Create':
-                          try:
-                              logger.info('Event = ' + eventType)
-                              manifestFile = s3_prefix + "/manifest.json"
-                              file_object = s3.get_object(Bucket=s3_bucket,Key=manifestFile)
-                              manifest_str = file_object['Body'].read().decode('utf-8')
-                              manifest_json = json.loads(manifest_str)
-                              version = manifest_json.get('version')
-                              logger.info('Version {}'.format(version))
-                              createPackage = ssm.create_document(Content=manifest_str, 
-                                  Attachments=[
-                                      {
-                                          'Key': 'SourceUrl',
-                                          'Values': [
-                                              f'https://{s3_bucket}.s3.amazonaws.com/{s3_prefix}',
-                                          ]
-                                      },
-                                  ], 
-                                  Name=package_name,  
-                                  DocumentType='Package')
-
-                              logger.info('Distributor Package: {}'.format(createPackage))
-                              response_data['Message'] = 'Package created successfully'
-                              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
-                          except Exception as e:
-                              logger.error(f'Error creating package: {e}')
-                              response_data['Message'] = 'Error creating package'
-                              cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
-                      elif eventType == 'Delete':
-                          logger.info(f'Request Type is Delete')
-                          try:
-                              ssm.delete_document(Name=package_name)
-                              response_data['Message'] = 'Package deleted successfully'
-                              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
-                          except Exception as e:
-                              logger.error(f'Error deleting package: {e}')
-                              response_data['Message'] = 'Error deleting package'
-                              cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
-
-                      elif eventType == 'Update':
-                          logger.info('Event = ' + eventType)
-                          response_data['Message'] = 'Package updated successfully'
-                          cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
-
-          #IAM Role for the CustomAuditManagerFramework Lambda
-          CreateSSMDistributorLambdaRole:
-            Metadata:
-              cfn-lint:
-                config:
-                  ignore_checks:
-                    - E1019  # False positive for managed policy !Sub function to support gov cloud
-                    - EIAMPolicyWildcardResource
-            Type: 'AWS::IAM::Role'
-            Properties:
-              RoleName: !Sub createssmdistributorlambdarole-${AWS::Region}
-              AssumeRolePolicyDocument:
-                Version: 2012-10-17
-                Statement:
-                  - Sid: AllowLambdaAssumeRole
-                    Effect: Allow
-                    Principal:
-                      Service: lambda.amazonaws.com
-                    Action: 'sts:AssumeRole'
-              ManagedPolicyArns:
-                - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
-              Policies:
-                - PolicyName: CreateSSMDistributorLambdaPolicy
-                  PolicyDocument:
-                    Version: 2012-10-17
-                    Statement:
-                      - Effect: Allow
-                        Action:
-                          - s3:PutObject
-                          - s3:PutBucketLogging
-                          - s3:PutBucketVersioning
-                          - s3:GetObject
-                          - s3:GetBucketLocation
-                          - s3:ListBucket
-                        Resource:
-                          - !Sub arn:${AWS::Partition}:s3:::${UptycsSsmPackageBucket}
-                          - !Sub arn:${AWS::Partition}:s3:::${UptycsSsmPackageBucket}/${UptycsSsmPackageBucketFolder}/*
-                      - Effect: Allow
-                        Action:
-                          - ssm:CreateDocument
-                          - ssm:DescribeDocument
-                          - ssm:DeleteDocument
-                          - ssm:ListTagsForResource
-                          - ssm:PutParameter
-                        Resource: '*'
       Parameters:
-        - ParameterKey: UptycsSsmPackageBucketFolder
-          ParameterValue: !Ref UptycsSsmPackageBucketFolder
         - ParameterKey: UptycsSsmPackageName
           ParameterValue: !Ref UptycsSsmPackageName
-        - ParameterKey: UptycsSsmPackageBucket
-          ParameterValue: !Ref UptycsSsmPackageBucket
         - ParameterKey: UptycsAgentTargetKey
           ParameterValue: !Ref UptycsAgentTargetKey
         - ParameterKey: UptycsAgentTargetValue

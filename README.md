@@ -20,10 +20,8 @@
 
 
 ## Overview
-This solution leverages AWS Systems Manager ([AWS Automations](https://docs.aws.amazon.
-com/systems-manager/latest/userguide/systems-manager-state.html), [AWS Distributor](https://docs.
-aws.amazon.com/systems-manager/latest/userguide/distributor.html), and [AWS State Manager]
-(https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html)) to 
+This solution leverages AWS Systems Manager [AWS Automations](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html), 
+[AWS Distributor](https://docs.aws.amazon.com/systems-manager/latest/userguide/distributor.html), and [AWS State Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-state.html) to 
 automatically install the Uptycs Agent on EC2 Instances.
 
 
@@ -91,7 +89,7 @@ The following scripts are provided as part of this solution. Some scripts are in
 1. Create a local copy of this solution using the git clone command.
 
     ```shell
-    git clone https://github.com/uptycslabs/aws-systems-manager/
+    git clone https://github.com/uptycslabs/aws-state-manager
     
     ```
     
@@ -120,15 +118,15 @@ The `create_package.py` script will use information in the `agent_list.json` fil
 files and a manifest.json file place them in a local s3-bucket folder and then upload them to an S3 bucket in your account. 
 More information about the python script [here](additional-documents/CREATE-PACKAGE.md)
 
-1. Navigate to the `ssm-distributor` folder and execute the `stage-package.py` script.
+1. Navigate to the `ssm-distributor` folder and execute the `create_package.py` script.
 
     > Note: It is possible to create a custom distributor package, more information is provided [here](.
     > /additional-documents/CUSTOM-PACKAGES.md).
    
-2. Run the stage-package.py script 
+2. Run the create_package.py script 
     ```shell
         cd ssm-distributor-sources
-        python3 ./stage-package.py -c <my-credentials-file> -b <my-bucket> -r <aws-region>   
+        python3 ./create_package.py -c <my-credentials-file> -b <my-bucket> -r <aws-region>   
     ```
    
     >Note: 

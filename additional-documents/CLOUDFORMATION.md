@@ -6,23 +6,30 @@ The `Uptycs-Stage-Manager.yaml` template creates a Uptycs Distributor package an
 Manager Association in multiple regions in your account.  
 You can deploy this template using the AWS Console or the command line.
 
+The diagram below shows the setup process.
+The template will create the distributor package and State Manager Association in the home 
+region together with a SELF_MANAGED StackSet that can be applied to all other regions. 
+
+![CloudFormation Process](../images/cft-setup-single-acct.png)
+
+
 #### Parameters
 This CloudFormation has the following parameters.
 
-| Parameter Key            |  Description                                                                                                                                           | Type               | Default       | Allowed Values                                |
-| ------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------| -------------------|---------------| --------------------------------------------- |
-| AdministrationRoleName  |  Existing Stackset Administration Role Name                                                                                                            | String             | N/A           | N/A                                           |
-| ExecutionRoleName        |  Existing Stackset Execution Role Name                                                                                                                 | String             | N/A           | N/A                                           |
-| UptycsSsmPackageBucketFolder |  Uptycs folder in s3 bucket                                                                                                                            | String             | uptycs        | N/A                                           |
-| UptycsSsmPackageName         |  Uptycs Distributor package name                                                                                                                       | String             | UptycsAgent   | N/A                                           |
-| UptycsSsmPackageBucket       |  SSM Distributor package that installs the Falcon agent                                                                                                | String             | N/A           | N/A                                         |
-| UptycsAgentTargetKey          |  Value of the Tag Key used to define the automation target                                                                                             | String             | SENSOR_DEPLOY | N/A                                           |
-| UptycsAgentTargetValue        |  Value of the Tag Value used to define the automation target                                                                                           | String             | TRUE          | N/A                                           |
-| UptycsScheduleRate            |  SSM assocation application cycle (minimum 30 minutes)                                                                                                 | String             | 60 minutes    | N/A                                           |
-| MaxConcurrency               |  Percentage of total targets that SSM State Manager should run the SSM Automation concurrently                                                         | String             | 100%          | N/A                                           |
-| MaxErrors                    |  Error threshold percentage before                                                                                                                     | String             | 25%           | N/A                                           |
-| ComplianceSeverity           |  The Severity to apply to the State Manager Alert                                                                                                      | String             | UNSPECIFIED   | CRITICAL, HIGH, LOW, MEDIUM, UNSPECIFIED      |
-| EnabledRegions               |  "Enter a comma-delimited list of regions from which you want to collect logs and metric streams. For example: \"us-east-1,eu-central-1,ap-south-1\"." | CommaDelimitedList | N/A           | N/A                                           |
+| Parameter Key            | Description                                                                                                                                                                  | Type               | Default       | Allowed Values                                |
+| ------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| -------------------|---------------| --------------------------------------------- |
+| AdministrationRoleName  | Existing Stackset Administration Role Name                                                                                                                                   | String             | N/A           | N/A                                           |
+| ExecutionRoleName        | Existing Stackset Execution Role Name                                                                                                                                        | String             | N/A           | N/A                                           |
+| UptycsSsmPackageBucketFolder | Uptycs folder in s3 bucket                                                                                                                                                   | String             | uptycs        | N/A                                           |
+| UptycsSsmPackageName         | Uptycs Distributor package name                                                                                                                                              | String             | UptycsAgent   | N/A                                           |
+| UptycsSsmPackageBucket       | SSM Distributor package that installs the Falcon agent                                                                                                                       | String             | N/A           | N/A                                         |
+| UptycsAgentTargetKey          | Value of the Tag Key used to define the automation target                                                                                                                    | String             | SENSOR_DEPLOY | N/A                                           |
+| UptycsAgentTargetValue        | Value of the Tag Value used to define the automation target                                                                                                                  | String             | TRUE          | N/A                                           |
+| UptycsScheduleRate            | SSM assocation application cycle (minimum 30 minutes)                                                                                                                        | String             | 60 minutes    | N/A                                           |
+| MaxConcurrency               | Percentage of total targets that SSM State Manager should run the SSM Automation concurrently                                                                                | String             | 100%          | N/A                                           |
+| MaxErrors                    | Error threshold percentage before                                                                                                                                            | String             | 25%           | N/A                                           |
+| ComplianceSeverity           | The Severity to apply to the State Manager Alert                                                                                                                             | String             | UNSPECIFIED   | CRITICAL, HIGH, LOW, MEDIUM, UNSPECIFIED      |
+| EnabledRegions               | "Enter a comma-delimited list of regions where you would like the Uptycs package to be visible. For example:"us-east-1,eu-central-1,ap-south-1\"." | CommaDelimitedList | N/A           | N/A                                           |
 
 #### Deployment
 AWS supports console or command line deployment for this solution.
