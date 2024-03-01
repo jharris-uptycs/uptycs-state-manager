@@ -1,0 +1,356 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Uptycs State Manager Stack using Uptycs Managed Distributor Packages. Check the name
+  of your distributor package in the "Shared With me Folder
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E9008
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Existing StackSet Administration and Execution roles (If you have created 
+          them already)"
+        Parameters:
+          - AdministrationRoleName
+          - ExecutionRoleName
+      - Label:
+          default: "Uptycs Distributor Package Parameters"
+        Parameters:
+          - UptycsSsmPackageName
+      - Label:
+          default: "StackSet deployment settings"
+        Parameters:
+          - EnabledRegions
+      - Label:
+          default: "Uptycs SSM State Manager Association Paramters"
+        Parameters:
+          - UptycsAgentTargetKey
+          - UptycsAgentTargetValue
+          - UptycsScheduleRate
+          - MaxConcurrency
+          - MaxErrors
+          - ComplianceSeverity
+    ParameterLabels:
+      AdministrationRoleName:
+        default: "The name of your existing stackset Administration Role normally 
+        AWSCloudFormationStackSetAdministrationRole "
+      ExecutionRoleName:
+        default: "The name of the stackset Execution Role normally 
+        AWSCloudFormationStackSetExecutionRole"
+      UptycsSsmPackageName:
+        default: "The name of your distributor package in the 'Shared With Me' folder"
+      UptycsAgentTargetKey:
+        default: "The Tag Key Name used to Target instances"
+      UptycsScheduleRate:
+        default: "The rate as which the association will run"
+      UptycsAgentTargetValue:
+        default: "The Tag Key Value used to Target instances"
+      MaxConcurrency:
+        default: "The maximum number of targets allowed to run the association at the same time"
+      MaxErrors:
+        default: "The number of errors that are allowed before the run stops"
+      ComplianceSeverity:
+        default: "The severity level that is assigned to the association."
+      EnabledRegions:
+        default: "Sets the regions where the Stack instances  will be created"
+Parameters:
+  AdministrationRoleName:
+    Type: String
+    Description: Existing Stackset Administration Role Name
+  ExecutionRoleName:
+    Type: String
+    Description: Existing Stackset Execution Role Name
+  UptycsSsmPackageName:
+    Description: Uptycs Distributor package name usually UptycsAgent-xxxxxx-with(out)-protect
+    Type: String
+  UptycsAgentTargetKey:
+    Description: Value of the Tag Key used to define the automation target
+    Default: "SENSOR_DEPLOY"
+    Type: String
+  UptycsAgentTargetValue:
+    Description: Value of the Tag Value used to define the automation target
+    Default: "TRUE"
+    Type: String
+  UptycsScheduleRate:
+    Description: SSM association application cycle (minimum 30 minutes)
+    Type: String
+    Default: 60 minutes
+  MaxConcurrency:
+    Description: Percentage of total targets that SSM State Manager should run the SSM Automation concurrently
+    Type: String
+    Default: 100%
+  MaxErrors:
+    Description: Error threshold percentage before
+    Type: String
+    Default: 25%
+  ComplianceSeverity:
+    Description: The Severity to apply to the State Manager Alert
+    Type: String
+    AllowedValues:
+      - 'CRITICAL'
+      - 'HIGH'
+      - 'LOW'
+      - 'MEDIUM'
+      - 'UNSPECIFIED'
+  EnabledRegions:
+    Type: CommaDelimitedList
+    Description: "Enter a comma-delimited list of regions For example: \"us-east-1,eu-central-1,ap-south-1\"."
+
+Conditions:
+  CreateNewStackSetAdminRole: !Equals [!Ref AdministrationRoleName, ""]
+  CreateNewStackSetExecRole: !Equals [!Ref ExecutionRoleName, ""]
+
+Resources:
+  UptycsStackSetAdministrationRole:
+    Type: AWS::IAM::Role
+    Condition: CreateNewStackSetAdminRole
+    Properties:
+      RoleName: UptycsStackSetAdministrationRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: AssumeRole-AWSCloudFormationStackSetExecutionRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - "arn:*:iam::*:role/UptycsStackSetExecutionRole"
+
+  UptycsStackSetExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateNewStackSetExecRole
+    Properties:
+      RoleName: UptycsStackSetExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
+  UptycsAgentStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      ManagedExecution:
+        Active: true
+      AdministrationRoleARN: !If
+        - CreateNewStackSetAdminRole
+        - !GetAtt UptycsStackSetAdministrationRole.Arn
+        - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AdministrationRoleName}"
+      ExecutionRoleName: !If [CreateNewStackSetExecRole, !Ref UptycsStackSetExecutionRole,!Ref ExecutionRoleName]
+      Description: StackSet for Uptycs Agent Installation
+      StackSetName: UptycsAgentStackSet
+      TemplateBody: |
+        AWSTemplateFormatVersion: 2010-09-09
+        Description: Uptycs SSM State Manager Stackset
+        Metadata:
+          cfn-lint:
+            config:
+              ignore_checks:
+                - E9008  # No QSID for this project
+          AWS::CloudFormation::Interface:
+            ParameterGroups:
+              - Label:
+                  default: "Uptycs Configuration Parameters"
+                Parameters:
+                  - UptycsSsmPackageName
+              - Label:
+                  default: "Uptycs SSM Association Paramters"
+                Parameters:
+                  - UptycsAgentTargetKey
+                  - UptycsAgentTargetValue
+                  - UptycsScheduleRate
+                  - MaxConcurrency
+                  - MaxErrors
+                  - ComplianceSeverity
+            ParameterLabels:
+              UptycsSsmPackageName:
+                default: "The name of the Uptycs distributor package that we will create"
+              UptycsAgentTargetKey:
+                default: "The Tag Key Name used to Target instances"
+              UptycsScheduleRate:
+                default: "The rate as which the association will run"
+              UptycsAgentTargetValue:
+                default: "The Tag Key Value used to Target instances"
+              MaxConcurrency:
+                default: "The maximum number of targets allowed to run the association at the same time"
+              MaxErrors:
+                default: "The number of errors that are allowed before the run stops"
+              ComplianceSeverity:
+                default: "The severity level that is assigned to the association."
+        Parameters:
+          UptycsSsmPackageName:
+            Description: Uptycs Distributor package name
+            Type: String
+          UptycsAgentTargetKey:
+            Description: Value of the Tag Key used to define the automation target
+            Default: "SENSOR_DEPLOY"
+            Type: String
+          UptycsAgentTargetValue:
+            Description: Value of the Tag Value used to define the automation target
+            Default: "TRUE"
+            Type: String
+          UptycsScheduleRate:
+            Description: SSM association application cycle (minimum 30 minutes)
+            Type: String
+            Default: 60 minutes
+          MaxConcurrency:
+            Description: Percentage of total targets that SSM State Manager should run the SSM Automation concurrently
+            Type: String
+            Default: 100%
+          MaxErrors:
+            Description: Error threshold percentage before
+            Type: String
+            Default: 25%
+          ComplianceSeverity:
+            Description: The Severity to apply to the State Manager Alert
+            Type: String
+            AllowedValues:
+              - 'CRITICAL'
+              - 'HIGH'
+              - 'LOW'
+              - 'MEDIUM'
+              - 'UNSPECIFIED'
+        Resources:
+          # SSM Association
+          UptycsSSMAssociation:
+            Type: AWS::SSM::Association
+            Properties:
+              Name: 'AWS-ConfigureAWSPackage'
+              Targets:
+                - Key: !Sub tag:${UptycsAgentTargetKey}
+                  Values:
+                    - !Ref UptycsAgentTargetValue
+              ScheduleExpression: !Sub rate(${UptycsScheduleRate})
+              Parameters:
+                action:
+                  - 'Install'
+                additionalArguments:
+                  - '{}'
+                installationType:
+                  - 'Uninstall and reinstall'
+                name:
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:870486279846:document/${UptycsSsmPackageName}
+              AssociationName: 'Uptycs'
+              ComplianceSeverity: !Ref ComplianceSeverity
+              ApplyOnlyAtCronInterval: false
+              MaxConcurrency: !Ref MaxConcurrency
+              MaxErrors: !Ref MaxErrors
+          # SSM Automation Document to install SSM Distribution
+          UptycsAgentDeploymentSSMDocument:
+            Type: AWS::SSM::Document
+            Properties:
+              Name: UptycsAutomationDoc
+              DocumentType: Automation
+              Content:
+                description: Run Document for installing the Uptycs osquery agent .
+                schemaVersion: '0.3'
+                assumeRole: '{{AutomationAssumeRole}}'
+                parameters:
+                  AWSRegion:
+                    type: String
+                  InstallerParams:
+                    type: String
+                    default: ''
+                    description: (Optional).
+                  Action:
+                    type: String
+                    allowedValues:
+                      - Install
+                      - Uninstall
+                    description: (Required) Specify whether or not to install or uninstall the package.
+                    default: Install
+                  InstallationType:
+                    type: String
+                    allowedValues:
+                      - Uninstall and reinstall
+                    description: '(Optional) Specify the type of installation. Uninstall and reinstall: The application is taken offline until the reinstallation process completes. In-place update: The application is available while new or updated files are added to the installation.'
+                    default: Uninstall and reinstall
+                  PackageName:
+                    type: String
+                    description: 'Uptycs package name.'
+                    default: !Ref UptycsSsmPackageName
+                  PackageVersion:
+                    type: String
+                    description: 'Package Version'
+                    default: ''
+                  InstanceIds:
+                    type: StringList
+                  Targets:
+                    type: MapList
+                    default: [ ]
+                  AutomationAssumeRole:
+                    type: String
+                mainSteps:
+                  - name: ExecuteDistributorPackage
+                    action: 'aws:runCommand'
+                    inputs:
+                      Targets: '{{ Targets }}'
+                      InstanceIds: '{{ InstanceIds }}'
+                      DocumentName: AWS-ConfigureAWSPackage
+                      Parameters:
+                        name: '{{PackageName}}'
+                        action: '{{Action}}'
+                        version: '{{PackageVersion}}'
+          # IAM Role for SSM Automation Document
+          SSMAutomationAssumeRole:
+            Type: AWS::IAM::Role
+            Properties:
+              Description: "Uptycs agent install role"
+              Path: /
+              AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                      Service: ssm.amazonaws.com
+                    Action: sts:AssumeRole
+              ManagedPolicyArns:
+                - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
+
+
+      Parameters:
+        - ParameterKey: UptycsSsmPackageName
+          ParameterValue: !Ref UptycsSsmPackageName
+        - ParameterKey: UptycsAgentTargetKey
+          ParameterValue: !Ref UptycsAgentTargetKey
+        - ParameterKey: UptycsAgentTargetValue
+          ParameterValue: !Ref UptycsAgentTargetValue
+        - ParameterKey: UptycsScheduleRate
+          ParameterValue: !Ref UptycsScheduleRate
+        - ParameterKey: MaxConcurrency
+          ParameterValue: !Ref MaxConcurrency
+        - ParameterKey: MaxErrors
+          ParameterValue: !Ref MaxErrors
+        - ParameterKey: ComplianceSeverity
+          ParameterValue: !Ref ComplianceSeverity
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
+      PermissionModel: SELF_MANAGED
+      StackInstancesGroup:
+          - DeploymentTargets:
+              Accounts:
+                - !Ref "AWS::AccountId"
+            Regions: !Ref EnabledRegions
+Outputs:
+  AdministrationRoleARN:
+    Value: !If
+      - CreateNewStackSetAdminRole
+      - !GetAtt UptycsStackSetAdministrationRole.Arn
+      - !Sub "arn:${AWS::Partition}::${AWS::AccountId}:role/${AdministrationRoleName}"
