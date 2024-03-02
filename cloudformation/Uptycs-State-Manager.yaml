@@ -44,7 +44,7 @@ Metadata:
       UptycsSsmPackageName:
         default: "The name of the Uptycs distributor package that we will create"
       UptycsSsmPackageBucket:
-        default: "The s3 bucket where the manifest and zip files are located"
+        default: "The name of the s3 bucket where the manifest and zip files are located"
       UptycsAgentTargetKey:
         default: "The Tag Key Name used to Target instances"
       UptycsScheduleRate:

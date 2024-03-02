@@ -2,3 +2,5 @@ argparse
 datetime
 PyJWT
 requests
+botocore
+boto3

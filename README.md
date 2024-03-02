@@ -112,7 +112,8 @@ Select **Save**
 
     <img src='./images/uptycs-api-creds.png' width='600'>
 
-2. Place the file in the `ssm-distributor` folder.  The credentials are required by the script to 
+2. Place the file in the `ssm-distributor-sources` folder.  The credentials are required by the 
+   script to 
 download the files from the Uptycs API and place them in the correct folder. 
 
 ### Create your distributor package
