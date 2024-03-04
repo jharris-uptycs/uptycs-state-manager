@@ -1,14 +1,18 @@
+"""
+This script enables Uptycs supported distributor packages to be shared with your AWS account
+The package will be shared from an Uptycs account and appear in your "Shared With Me" folder
+"""
+
 import argparse
 import datetime
 import json
 import logging
 import os
 import time
-
 import jwt
 import requests
 
-
+# pylint: disable=R0903
 class LogHandler:
     """A class to encapsulate logging setup and methods for serialization."""
 
@@ -24,6 +28,7 @@ class LogHandler:
         self.logger.addHandler(file_handler)
 
     def log_message(self, level, message):
+        """Log a message with the specified logging level."""
         if level.lower() == 'debug':
             self.logger.debug(message)
         elif level.lower() == 'info':
@@ -37,7 +42,9 @@ class LogHandler:
 
 
 class UptApiAuth:
+    """Handles authentication to Uptycs and returns a valid authentication token"""
 
+    # pylint: disable=R0913
     def __init__(self, api_config_file=None, key=None, secret=None, domain=None,
                  customer_id=None, domain_suffix='', silent=True, logger=None):
         self.base_url = None
@@ -51,7 +58,7 @@ class UptApiAuth:
                         'info',
                         f'Reading Uptycs API connection & authorization details from '
                         f'{api_config_file}')
-                with open(api_config_file, encoding='utf-8') as file_handle:
+                with open(api_config_file,'r', encoding='utf-8') as file_handle:
                     data = json.load(file_handle)
                 key = data.get('key', key)
                 secret = data.get('secret', secret)
@@ -91,6 +98,7 @@ class UptApiAuth:
 
 
 def main():
+    """Main entry point"""
     logger = LogHandler('auth_logger')
     parser = argparse.ArgumentParser(description='Parse account_id and regions from input')
     parser.add_argument('-a', '--account_id', type=str, required=True, help='The Account ID')
@@ -108,14 +116,14 @@ def main():
     account_id = args.account_id
 
     # Read regions from JSON file
-    with open(args.regions_file, "r") as read_file:
+    with open(args.regions_file, "r", encoding='utf8') as read_file:
         data = json.load(read_file)
     regions = ",".join(data['regions'])
 
     auth_token = UptApiAuth(args.api_key_file, logger=logger)
     params = {"regions": regions}
     url = f'{auth_token.base_url}/packagedownloads/osqueryssm/terraform/{account_id}'
-    response = requests.get(url, headers=auth_token.header, params=params)
+    response = requests.get(url, headers=auth_token.header, params=params,timeout=10)
 
     if response.status_code == 200:
         logger.log_message('critical', f"Success! Server responded with: {response.status_code}")
