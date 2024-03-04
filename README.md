@@ -93,9 +93,9 @@ The following scripts are provided as part of this solution. Some scripts are in
 
     ```shell
     git clone https://github.com/jharris-uptycs/aws-state-manager
-    
     ```
-    
+2. Unzip the tarball
+
     This will download the required files and directories for the project
     
 | Directory name            | Description                                                                                            |
@@ -103,6 +103,16 @@ The following scripts are provided as part of this solution. Some scripts are in
 | ssm-distributor-sources | Contains Folders representing each supported OS and processor architecture                             |
 | terraform               | Terraform files required to build the State Manager Association and Distributor package                |                                                                            |
 | cloudformation          | Cloudformation files required to build the State Manager Association and Distributor package |                                                                            |
+
+3. Change directory to the newly created aws-state-manager directory and Install required python 
+   modules
+    ```shell
+        pip3 install -r requirements.txt
+    ```
+
+### Create your Uptycs API credential file
+Download required python packages.
+
 
 ### Create your Uptycs API credential file
 1. Download the API Credentials file from the Uptycs console.  
