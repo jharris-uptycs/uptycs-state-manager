@@ -92,7 +92,7 @@ The following scripts are provided as part of this solution. Some scripts are in
 1. Create a local copy of this solution using the git clone command.
 
     ```shell
-    git clone https://github.com/uptycslabs/aws-state-manager
+    git clone https://github.com/jharris-uptycs/aws-state-manager
     
     ```
     
